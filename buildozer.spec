@@ -12,3 +12,4 @@ android.permissions = VIBRATE
 android.api = 33
 android.minapi = 21
 icon.filename = %(source.dir)s/icon.png
+log_level = 2
