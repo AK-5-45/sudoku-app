@@ -27,39 +27,56 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      - name: Ultimate Android SDK Fix (Symlink Trick)
+      - name: Ultimate Android SDK Fix (Symlink + Licenses)
         run: |
           SDK_DIR=$HOME/.buildozer/android/platform/android-sdk
           
-          # 1. Скачиваем современные cmdline-tools
+          # 1. Скачиваем современные инструменты
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/cmdline.zip
           mkdir -p /tmp/cmdline_tmp
           unzip -q /tmp/cmdline.zip -d /tmp/cmdline_tmp
           
-          # 2. Кладем их в правильную современную папку
+          # 2. Кладем их в правильную папку
           mkdir -p $SDK_DIR/cmdline-tools/latest
           mv /tmp/cmdline_tmp/cmdline-tools/* $SDK_DIR/cmdline-tools/latest/
           
-          # 3. МАГИЯ: Создаем старую папку tools и делаем ссылку на sdkmanager, чтобы обмануть Buildozer
+          # 3. МАГИЯ: Создаем ярлык в старую папку, чтобы обмануть Buildozer
           mkdir -p $SDK_DIR/tools/bin
           ln -s $SDK_DIR/cmdline-tools/latest/bin/sdkmanager $SDK_DIR/tools/bin/sdkmanager
           ln -s $SDK_DIR/cmdline-tools/latest/bin/avdmanager $SDK_DIR/tools/bin/avdmanager
           
-          # 4. Файлы лицензий
+          # 4. Подкладываем файлы лицензий
           mkdir -p $SDK_DIR/licenses
           echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > $SDK_DIR/licenses/android-sdk-license
           echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $SDK_DIR/licenses/android-sdk-preview-license
           
-          # 5. Явное принятие лицензий через реальный sdkmanager
+          # 5. Принудительно принимаем лицензии
           yes | $SDK_DIR/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Build APK
+      - name: Build APK with Log Capture
+        id: build_step
+        continue-on-error: true
         run: |
           buildozer android clean || true
-          buildozer -v android debug
+          buildozer -v android debug 2>&1 | tee buildozer_full.log
+
+      - name: Show REAL Error (Last 100 lines)
+        if: always()
+        run: |
+          echo "=========================================================="
+          echo "=== ПОСЛЕДНИЕ 100 СТРОК (ЗДЕСЬ ТОЧНАЯ ПРИЧИНА) ==="
+          echo "=========================================================="
+          tail -n 100 buildozer_full.log
+
+      - name: Upload Full Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-buildozer-log
+          path: buildozer_full.log
 
       - name: Upload APK
-        if: success()
+        if: steps.build_step.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: Sudoku-APK
