@@ -185,7 +185,7 @@ class SudokuBoard(GridLayout):
 class NewGameButton(Button):
     def __init__(self, board, **kwargs):
         super().__init__(**kwargs)
-        self.text = "Новая игра"
+        self.text = "🔄 Новая игра"
         self.size_hint = (1, None)
         self.height = 60
         self.background_color = (0.2, 0.6, 0.2, 1)
