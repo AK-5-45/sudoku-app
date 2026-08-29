@@ -27,33 +27,26 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      - name: Clean previous builds
+      - name: Build APK
         run: |
           buildozer android clean || true
+          yes | buildozer android debug
 
-      - name: Build APK and save full log
-        id: build_step
-        continue-on-error: true # Позволяет продолжить выполнение, даже если сборка упала, чтобы мы могли сохранить лог
+      - name: Find APK files
         run: |
-          buildozer android debug 2>&1 | tee buildozer_full.log
+          echo "=== Содержимое папки bin/ ==="
+          ls -lah bin/ || echo "Папка bin/ не найдена"
+          echo ""
+          echo "=== Поиск ВСЕХ .apk и .aab файлов ==="
+          find . -name "*.apk" -o -name "*.aab" | head -20
 
-      - name: Extract Errors from Log
-        run: |
-          echo "========================================="
-          echo "=== ПОИСК ОШИБОК В ЛОГЕ (GREP) ==="
-          echo "========================================="
-          grep -i -B 10 -A 10 "error\|traceback\|failed\|syntax" buildozer_full.log || echo "Специфических слов не найдено, ошибка может быть в кодировке."
-
-      - name: Upload Full Log as Artifact
+      - name: Upload APK (any name)
         uses: actions/upload-artifact@v4
-        if: always() # Загружает лог ВСЕГДА, даже при ошибке
-        with:
-          name: full-buildozer-log
-          path: buildozer_full.log
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        if: steps.build_step.outcome == 'success'
         with:
           name: Sudoku-APK
-          path: bin/*.apk
+          path: |
+            bin/*.apk
+            bin/*.aab
+            **/*.apk
+            **/*.aab
+          if-no-files-found: warn
