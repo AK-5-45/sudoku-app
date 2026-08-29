@@ -5,7 +5,7 @@ package.domain = org.sudoku.app
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,mp3,ttf,ogg,wav
 version = 1.0
-requirements = python3,kivy
+requirements = python3==3.10.14,kivy
 orientation = portrait
 osx.python_version = 3
 osx.kivy_version = 2.2.1
