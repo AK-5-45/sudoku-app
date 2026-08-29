@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04  # <--- ВАЖНО: Используем стабильную версию Ubuntu
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,16 +27,33 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      - name: Clean previous failed builds
+      - name: Clean previous builds
         run: |
           buildozer android clean || true
 
-      - name: Build APK with Buildozer
+      - name: Build APK and save full log
+        id: build_step
+        continue-on-error: true # Позволяет продолжить выполнение, даже если сборка упала, чтобы мы могли сохранить лог
         run: |
-          yes | buildozer android debug
+          buildozer android debug 2>&1 | tee buildozer_full.log
+
+      - name: Extract Errors from Log
+        run: |
+          echo "========================================="
+          echo "=== ПОИСК ОШИБОК В ЛОГЕ (GREP) ==="
+          echo "========================================="
+          grep -i -B 10 -A 10 "error\|traceback\|failed\|syntax" buildozer_full.log || echo "Специфических слов не найдено, ошибка может быть в кодировке."
+
+      - name: Upload Full Log as Artifact
+        uses: actions/upload-artifact@v4
+        if: always() # Загружает лог ВСЕГДА, даже при ошибке
+        with:
+          name: full-buildozer-log
+          path: buildozer_full.log
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
+        if: steps.build_step.outcome == 'success'
         with:
           name: Sudoku-APK
           path: bin/*.apk
