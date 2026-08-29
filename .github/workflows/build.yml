@@ -27,22 +27,31 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      - name: Fix Android SDK cmdline-tools (100% Working Fix)
+      - name: Ultimate Android SDK Fix (Symlink Trick)
         run: |
-          # 1. Создаём правильную структуру папок для современных Android SDK
-          mkdir -p $HOME/.buildozer/android/platform/android-sdk/cmdline-tools
+          SDK_DIR=$HOME/.buildozer/android/platform/android-sdk
           
-          # 2. Скачиваем официальные cmdline-tools от Google
+          # 1. Скачиваем современные cmdline-tools
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/cmdline.zip
-          unzip -q /tmp/cmdline.zip -d $HOME/.buildozer/android/platform/android-sdk/cmdline-tools
+          mkdir -p /tmp/cmdline_tmp
+          unzip -q /tmp/cmdline.zip -d /tmp/cmdline_tmp
           
-          # 3. Переименовываем папку в 'latest' (так требует Buildozer)
-          mv $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest
+          # 2. Кладем их в правильную современную папку
+          mkdir -p $SDK_DIR/cmdline-tools/latest
+          mv /tmp/cmdline_tmp/cmdline-tools/* $SDK_DIR/cmdline-tools/latest/
           
-          # 4. Создаём файлы лицензий, чтобы система не задавала вопросов
-          mkdir -p $HOME/.buildozer/android/platform/android-sdk/licenses
-          echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+          # 3. МАГИЯ: Создаем старую папку tools и делаем ссылку на sdkmanager, чтобы обмануть Buildozer
+          mkdir -p $SDK_DIR/tools/bin
+          ln -s $SDK_DIR/cmdline-tools/latest/bin/sdkmanager $SDK_DIR/tools/bin/sdkmanager
+          ln -s $SDK_DIR/cmdline-tools/latest/bin/avdmanager $SDK_DIR/tools/bin/avdmanager
+          
+          # 4. Файлы лицензий
+          mkdir -p $SDK_DIR/licenses
+          echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > $SDK_DIR/licenses/android-sdk-license
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $SDK_DIR/licenses/android-sdk-preview-license
+          
+          # 5. Явное принятие лицензий через реальный sdkmanager
+          yes | $SDK_DIR/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Build APK
         run: |
