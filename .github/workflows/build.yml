@@ -27,30 +27,18 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      - name: Build APK and save log
-        id: build_step
-        continue-on-error: true
+      - name: Accept Android SDK Licenses
+        run: |
+          # Принудительно принимаем все лицензии Android SDK перед сборкой
+          yes | sdkmanager --licenses || true
+
+      - name: Build APK
         run: |
           buildozer android clean || true
-          buildozer -v android debug 2>&1 | tee buildozer_full.log
-
-      - name: Show REAL error (Last 100 lines)
-        if: always()
-        run: |
-          echo "=================================================="
-          echo "=== НАСТОЯЩАЯ ОШИБКА (ПОСЛЕДНИЕ 100 СТРОК) ==="
-          echo "=================================================="
-          tail -n 100 buildozer_full.log
-
-      - name: Upload Full Log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-buildozer-log
-          path: buildozer_full.log
+          buildozer -v android debug
 
       - name: Upload APK
-        if: steps.build_step.outcome == 'success'
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Sudoku-APK
